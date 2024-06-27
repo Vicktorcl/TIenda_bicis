@@ -9,14 +9,13 @@
             <div class="col-6 text-right">
                 <h2>
                     Boleta N° 
-                    {{boleta.nro_boleta}} 
+                    {{ boleta.nro_boleta }} 
                     de 
-                    {{boleta.cliente.usuario.first_name}}
-                    {{boleta.cliente.usuario.last_name}}
+                    {{ boleta.cliente.usuario.first_name }}
+                    {{ boleta.cliente.usuario.last_name }}
                 </h2>
             </div>
             <div class="col-6">
-
                 <table class="mb-3" style="float: right">
                     <tr>
                         <td class="td_img_estado_boleta"> 
@@ -32,13 +31,16 @@
                     <tr>
                         <td class="td_fec_estado_boleta"> 
                             Vendido <br> 
-                            {{boleta.fecha_venta|formatear_fecha}}
+                            {{ boleta.fecha_venta|formatear_fecha }}
+                        </td>
                         <td class="td_fec_estado_boleta"> 
                             Despachado <br> 
-                            {{boleta.fecha_despacho|formatear_fecha}}
+                            {{ boleta.fecha_despacho|formatear_fecha }}
+                        </td>
                         <td class="td_fec_estado_boleta"> 
                             Entregado <br> 
-                            {{boleta.fecha_entrega|formatear_fecha}}
+                            {{ boleta.fecha_entrega|formatear_fecha }}
+                        </td>
                     </tr>
                 </table>
             </div>
@@ -46,44 +48,55 @@
 
         <main role="main">
             <div class="container">
-                <table class="table mt-4">
+                <table id="tabla-principal" class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Categoria</th>
+                            <th>Categoría</th>
                             <th>Producto</th>
                             <th>Precio</th>
-                            <th>%Desc Suscriptor</th>
-                            <th>%Desc Oferta</th>
-                            <th>%Desc Total</th>
+                            <th>% Desc Suscriptor</th>
+                            <th>% Desc Oferta</th>
+                            <th>% Desc Total</th>
                             <th>Descuentos</th>
                             <th>Precio a pagar</th>
+                            <th></th> <!-- Columna vacía para separación -->
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>{{item.bodega.producto.categoria.nombre}}<br></td>
-                            <td>{{item.bodega.producto.nombre}}<br></td>
-                            {% comment %} <td>{{item.precio|formatear_dinero}}<br></td>
-                            <td>{{item.descuento_subscriptor|formatear_porcentaje}}<br></td>
-                            <td>{{item.descuento_oferta|formatear_porcentaje}} <br></td>
-                            <td>{{item.descuento_total|formatear_porcentaje}} <br></td>
-                            <td>{{item.descuentos|formatear_dinero}} <br></td>
-                            <td>{{item.precio_a_pagar|formatear_dinero}} <br></td>
-                            <td>{{boleta.monto_sin_iva|formatear_dinero}} <br></td>
-                            <td>{{boleta.iva|formatear_dinero}} <br></td>
-                            <td>{{boleta.total_a_pagar|formatear_dinero}} <br></td> {% endcomment %}
-                            <td>
+                        {% for detalle in boleta.detalleboleta_set.all %}
+                            <tr>
+                                <td>{{ detalle.bodega.producto.categoria.nombre }}</td>
+                                <td>{{ detalle.bodega.producto.nombre }}</td>
+                                <td>{{ detalle.precio|formatear_dinero}}</td>
+                                <td>{{ detalle.descuento_subscriptor|formatear_porcentaje}}</td>
+                                <td>{{ detalle.descuento_oferta|formatear_porcentaje}}</td>
+                                <td>{{ detalle.descuento_total|formatear_porcentaje}} </td>
+                                <td>{{ detalle.descuentos|formatear_dinero}}</td>
+                                <td>{{ detalle.precio_a_pagar|formatear_dinero}}</td>
                             </tr>
-                      </tbody>
-                  </table>
-              </div>
-              </main>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="7"></td> <!-- Columnas vacías para alinear -->
+                            <td class="text-right"><strong>Monto sin IVA:</strong></td>
+                            <td>{{ boleta.monto_sin_iva|formatear_dinero }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="7"></td> <!-- Columnas vacías para alinear -->
+                            <td class="text-right"><strong>IVA:</strong></td>
+                            <td>{{ boleta.iva|formatear_dinero}}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="7"></td> <!-- Columnas vacías para alinear -->
+                            <td class="text-right"><strong>Total a pagar:</strong></td>
+                            <td>{{ boleta.total_a_pagar|formatear_dinero }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     
     {% else %}
-
-        <h1> No se puede mostrar la boleta </h1>
-
-    {% endif %} 
-    
+        <h1>No se puede mostrar la boleta</h1>
+    {% endif %}
     
 {% endblock content %}

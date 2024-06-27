@@ -27,6 +27,15 @@ class ProductoForm(ModelForm):
     class Meta:
         model = Producto
         fields = '__all__'
+        widgets = {
+            'descripcion': forms.Textarea(),
+            'imagen': forms.FileInput()
+        }
+        labels = {
+            'nombre': 'Nombre',
+            'descuento_subscriptor': 'Subscriptor(%)',
+            'descuento_oferta': 'Oferta(%)',
+        }
 
 # El formulario de bodega está listo, no necesitas modificarlo
 class BodegaForm(Form):
