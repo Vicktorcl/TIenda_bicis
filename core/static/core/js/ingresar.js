@@ -1,7 +1,7 @@
 $(document).ready(function() {
 
   // Asignar placeholders para ayudar a los usuarios
-  $('#id_username').attr('placeholder', 'Ej: cgomezv, cevans, sjohasson');
+  $('#id_username').attr('placeholder', 'Ej: vibarrientos, secavieres, speter14');
   $('#id_password').attr('placeholder', 'Ingesa tu contraseña actual');
 
   $('#form').validate({ 

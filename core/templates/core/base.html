@@ -33,7 +33,7 @@
     <div class="container-fluid">
 
       <a class="navbar-brand" href="{% url 'inicio' %}">
-        <img src="{% static 'core/img/logo.jpg' %}" class="logo-menu-superior" width="50px" style="margin-right: 20px">
+        <img src="{% static 'core/img/logo.webp' %}" class="logo-menu-superior" height="100px" style="margin-right: 20px">
       </a>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
@@ -115,9 +115,7 @@
             </li>
           {% endif %}
           
-          <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="{% url 'api_ropa' %}">Concurso!</a>
-          </li>
+
 
           {% if mostrar_carrito %}
             <li class="nav-item">
@@ -183,9 +181,6 @@
         <br>
       </footer>
     </div>
-
-    <hr>
-    <a href="{% url 'poblar' %}" clas="btn btn-danger">POBLAR BASE DE DATOS CON REGISTROS PARA PRUEBAS</a>
   </footer>
 
   <!-- BLOQUE DE SCRIPTS COMPARTIDOS POR TODAS LAS PAGINAS -->
@@ -196,7 +191,7 @@
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script type="text/javascript" src="{% static 'core/js/scripts.js' %}"></script>
+    <script type="text/javascript" src="{% static 'core/js/script.js' %}"></script>
 
 
   <!-- BLOQUE DE SCRIPTS PERSONALIZADOS DE CADA PAGINA DEL SITIO WEB -->

@@ -9,7 +9,7 @@ class Categoria(models.Model):
     nombre = models.CharField(max_length=100, blank=False, null=False, verbose_name='Nombre categoría')
     
     class Meta:
-        db_table = 'Categoria'
+        db_table = 'CategoriaProducto'
         verbose_name = "Categoría de producto"
         verbose_name_plural = "Categorías de productos"
         ordering = ['nombre']
