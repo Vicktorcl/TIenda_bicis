@@ -4,12 +4,16 @@ from core.templatetags.custom_filters import formatear_dinero
 from django.db import models
 from django.db.models import Min
 from django.db import connection
+from django.db.models import UniqueConstraint
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from datetime import timedelta
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100, blank=False, null=False, verbose_name='Nombre categoría')
     
     class Meta:
-        db_table = 'CategoriaProducto'
+        db_table = 'CateProd'
         verbose_name = "Categoría de producto"
         verbose_name_plural = "Categorías de productos"
         ordering = ['nombre']
@@ -43,7 +47,7 @@ class Producto(models.Model):
     imagen = models.ImageField(upload_to='productos/', blank=False, null=False, verbose_name='Imagen')
     
     class Meta:
-        db_table = 'Producto'
+        db_table = 'Prod'
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         ordering = ['categoria', 'nombre']
@@ -77,7 +81,7 @@ class Perfil(models.Model):
     imagen = models.ImageField(upload_to='perfiles/', blank=False, null=False, verbose_name='Imagen')
     
     class Meta:
-        db_table = 'Perfil'
+        db_table = 'Usuario'
         verbose_name = "Perfil de usuario"
         verbose_name_plural = "Perfiles de usuarios"
         ordering = ['tipo_usuario']
@@ -120,7 +124,7 @@ class Carrito(models.Model):
     precio_a_pagar = models.IntegerField(blank=False, null=False, verbose_name='Precio a pagar')
     
     class Meta:
-        db_table = 'Carrito'
+        db_table = 'Carro'
         verbose_name = "Carrito de compras"
         verbose_name_plural = "Carritos de compras"
         ordering = ['cliente', 'producto']
@@ -174,7 +178,7 @@ class Bodega(models.Model):
         verbose_name_plural = "Bodegas"
 
     def __str__(self):
-        consulta_sql = f'SELECT boleta_id FROM DetalleBoleta WHERE bodega_id={self.id}'
+        consulta_sql = f'SELECT boleta_id FROM BoletaDet WHERE bodega_id={self.id}'
         with connection.cursor() as cursor:
             cursor.execute(consulta_sql)
             resultado = cursor.fetchone()
@@ -213,7 +217,7 @@ class DetalleBoleta(models.Model):
     precio_a_pagar = models.IntegerField(blank=False, null=False, verbose_name='Precio a pagar')
     
     class Meta:
-        db_table = 'DetalleBoleta'
+        db_table = 'BoletaDet'
         verbose_name = "Detalle de boleta"
         verbose_name_plural = "Detalles de boletas"
 
@@ -229,3 +233,32 @@ class DetalleBoleta(models.Model):
         }
 
 
+class Mantenimiento(models.Model):
+    cliente = models.ForeignKey(Perfil, on_delete=models.DO_NOTHING, verbose_name='Cliente', blank=False, null=False)
+    fecha_programada = models.DateField(verbose_name='Fecha programada', blank=False, null=False)
+    hora_programada = models.TimeField(verbose_name='Hora programada', blank=False, null=False)
+    descripcion_problema = models.TextField(verbose_name='Descripción del problema', blank=False, null=False)
+
+    class Meta:
+        db_table = 'Mantenimiento'
+        verbose_name = 'Mantenimiento'
+        verbose_name_plural = 'Mantenimientos'
+        ordering = ['fecha_programada', 'hora_programada']
+        constraints = [
+            models.UniqueConstraint(fields=['fecha_programada', 'hora_programada'], name='unique_fecha_hora')
+        ]
+
+    def clean(self):
+        if self.hora_programada:
+            # Validar que la hora esté en intervalos de una hora exacta
+            if self.hora_programada.minute != 0 or self.hora_programada.second != 0:
+                raise ValidationError('La hora del mantenimiento debe estar en intervalos de una hora exacta.')
+
+            # Verificar si ya existe un mantenimiento en la misma fecha y hora
+            if Mantenimiento.objects.filter(fecha_programada=self.fecha_programada, hora_programada=self.hora_programada).exists():
+                raise ValidationError('Ya existe un mantenimiento programado para esa fecha y hora.')
+        else:
+            raise ValidationError('Debe especificar una hora programada para el mantenimiento.')
+
+    def __str__(self):
+        return f'Mantenimiento el {self.fecha_programada} a las {self.hora_programada} por {self.cliente.usuario.first_name} {self.cliente.usuario.last_name}'

@@ -2,27 +2,14 @@ from django import forms
 from django.forms import ModelForm, Form
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Categoria, Producto, Perfil
+from .models import Categoria, Producto, Perfil, Mantenimiento
+from bootstrap_datepicker_plus.widgets import DateTimePickerInput
+from django.core.exceptions import ValidationError
+from datetime import date, datetime
+from datetime import time, timedelta
 
-# *********************************************************************************************************#
-#                                                                                                          #
-# INSTRUCCIONES PARA EL ALUMNO, PUEDES SEGUIR EL VIDEO TUTORIAL, COMPLETAR EL CODIGO E INCORPORAR EL TUYO: #
-#                                                                                                          #
-# https://drive.google.com/drive/folders/1ObwMnpKmCXVbq3SMwJKlSRE0PCn0buk8?usp=drive_link                  #
-#                                                                                                          #
-# *********************************************************************************************************#
 
-# PARA LA PAGINA MANTENEDOR DE PRODUCTOS:
-# Crea ProductoForm como una clase que hereda de ModelForm
-# asocialo con el modelo Producto
-# muestra todos los campos
-# crea 2 widgets para:
-#   - la descripción del producto como TextArea
-#   - el botón de cargar imagen como FileInput y 
-#     escóndelo para reemplazarlo por otro acorde 
-#     con tu diseño gráfico
-# renombra las siguientes etiquetas para que ocupen menos
-# espacio en la página: 'Nombre', 'Subscriptor(%)' y 'Oferta(%)'
+                                                                                                
 class ProductoForm(ModelForm):
     class Meta:
         model = Producto
@@ -37,7 +24,6 @@ class ProductoForm(ModelForm):
             'descuento_oferta': 'Oferta(%)',
         }
 
-# El formulario de bodega está listo, no necesitas modificarlo
 class BodegaForm(Form):
     categoria = forms.ModelChoiceField(queryset=Categoria.objects.all(), label='Categoría')
     producto = forms.ModelChoiceField(queryset=Producto.objects.none(), label='Producto')
@@ -45,7 +31,6 @@ class BodegaForm(Form):
     class Meta:
         fields = '__all__'
 
-# El formulario de ingreso está listo, no necesitas modificarlo
 class IngresarForm(Form):
     username = forms.CharField(widget=forms.TextInput(), label="Cuenta")
     password = forms.CharField(widget=forms.PasswordInput(), label="Contraseña")
@@ -83,6 +68,9 @@ class RegistroPerfilForm(ModelForm):
             'direccion': forms.Textarea(),
             'imagen': forms.FileInput(),
         }
+        labels = {
+            'subscrito': 'Usuario Premium'
+        }
 
 # PARA LA PAGINA MIS DATOS Y MANTENEDOR DE USUARIOS:
 # Crear UsuarioForm como una clase que hereda de ModelForm
@@ -93,6 +81,7 @@ class UsuarioForm(ModelForm):
    class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email']
+
         labels = {
             'email': 'E-mail'
         }
@@ -113,3 +102,80 @@ class PerfilForm(ModelForm):
             'direccion': forms.Textarea(),
             'imagen': forms.FileInput(),
         }
+        labels = {
+            'subscrito': 'Usuario Premium'
+        }
+
+class MantenimientoForm(forms.ModelForm):
+    class Meta:
+        model = Mantenimiento
+        fields = ['fecha_programada', 'hora_programada', 'descripcion_problema']
+        widgets = {
+            'fecha_programada': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'hora_programada': forms.Select(attrs={'class': 'form-control'}),
+            'descripcion_problema': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['hora_programada'].choices = []
+
+        if 'fecha_programada' in self.data:
+            fecha = self.data['fecha_programada']
+            if fecha:
+                horas_disponibles = self.get_horas_disponibles(fecha)
+                self.fields['hora_programada'].choices = horas_disponibles
+
+    def clean_hora_programada(self):
+        hora = self.cleaned_data['hora_programada']
+        
+        if isinstance(hora, str):
+            try:
+                hora = datetime.strptime(hora, '%H:%M').time()
+            except ValueError:
+                raise ValidationError('Formato de hora no válido.')
+
+        if hora.minute != 0 or hora.second != 0:
+            raise ValidationError('La hora del mantenimiento debe estar en intervalos de una hora exacta.')
+
+        return hora
+
+    def clean_descripcion_problema(self):
+        descripcion = self.cleaned_data['descripcion_problema']
+        if not descripcion:
+            raise ValidationError('La descripción del problema es obligatoria.')
+        return descripcion
+
+    def clean_fecha_programada(self):
+        fecha = self.cleaned_data['fecha_programada']
+        if fecha.weekday() in [5, 6]:  # 5 es sábado y 6 es domingo
+            raise ValidationError('No se pueden agendar mantenimientos los fines de semana. Seleccione un día entre lunes y viernes.')
+        return fecha
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_programada = cleaned_data.get('fecha_programada')
+        hora_programada = cleaned_data.get('hora_programada')
+
+        if fecha_programada and hora_programada:
+            if Mantenimiento.objects.filter(fecha_programada=fecha_programada, hora_programada=hora_programada).exists():
+                raise ValidationError('Ya hay un mantenimiento programado para esta fecha y hora.')
+
+    def get_horas_disponibles(self, fecha):
+        mantenimientos_programados = Mantenimiento.objects.filter(fecha_programada=fecha).values_list('hora_programada', flat=True)
+        horas_disponibles = []
+
+        hora_inicio = time(8, 0)  # Hora de inicio de disponibilidad
+        hora_fin = time(19, 0)   # Hora de fin de disponibilidad
+        intervalo = timedelta(hours=1)  # Intervalo de una hora
+
+        hora_actual = datetime.combine(datetime.today(), hora_inicio)
+        hora_fin_datetime = datetime.combine(datetime.today(), hora_fin)
+
+        while hora_actual.time() <= hora_fin:
+            if hora_actual.time() not in mantenimientos_programados:
+                hora_str = hora_actual.time().strftime('%H:%M')
+                horas_disponibles.append((hora_str, hora_str))
+            hora_actual += intervalo
+
+        return horas_disponibles

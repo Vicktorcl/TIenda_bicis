@@ -1,7 +1,6 @@
 from datetime import date
 from .zpoblar import poblar_bd
-from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.models import User
@@ -9,12 +8,18 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.urls import reverse
 from django.utils.safestring import SafeString
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Producto, Boleta, Carrito, DetalleBoleta, Bodega, Perfil
+from .models import Producto, Boleta, Carrito, DetalleBoleta, Bodega, Perfil, Mantenimiento
 from .forms import ProductoForm, BodegaForm, IngresarForm, UsuarioForm, PerfilForm
-from .forms import RegistroUsuarioForm, RegistroPerfilForm
+from .forms import RegistroUsuarioForm, RegistroPerfilForm, MantenimientoForm
 from .templatetags.custom_filters import formatear_dinero, formatear_numero
 from .tools import eliminar_registro, verificar_eliminar_registro, show_form_errors
 from django.core.mail import send_mail
+from django.utils import timezone
+from datetime import timedelta, time, datetime
+from django.http import JsonResponse, HttpResponseRedirect
+from django.views.decorators.http import require_GET
+from django.urls import reverse
+from django.utils.timezone import now
 
 # *********************************************************************************************************#
 #                                                                                                          #
@@ -75,6 +80,10 @@ def nosotros(request):
     # CREAR: renderización de página
     return render(request, 'core/nosotros.html')
 
+def administrar_tienda(request):
+    # CREAR: renderización de página
+    return render(request, 'core/administrar_tienda.html')
+
 def api_ropa(request):
     return render(request, 'core/api_ropa.html')
 
@@ -120,7 +129,7 @@ def salir(request):
     return redirect(inicio)
 
 @user_passes_test(es_usuario_anonimo)
-def registrarme(request):
+def registro(request):
     
     if request.method == 'POST':
         
@@ -155,7 +164,7 @@ def registrarme(request):
         'form_perfil': form_perfil,
     }
 
-    return render(request, 'core/registrarme.html', context)
+    return render(request, 'core/registro.html', context)
 
 @login_required
 def misdatos(request):
@@ -291,9 +300,123 @@ def productos(request, accion, id):
     
     return render(request, 'core/productos.html', context)
 
+@require_GET
+def horas_disponibles(request):
+    fecha_seleccionada = request.GET.get('fecha')
+    if fecha_seleccionada:
+        fecha = datetime.strptime(fecha_seleccionada, '%Y-%m-%d').date()
+        mantenimientos_ocupados = Mantenimiento.objects.filter(fecha_programada=fecha).values_list('hora_programada', flat=True)
+        
+        horas_disponibles = []
+        hora = time(8, 0)  # Hora inicial disponible
+        hora_fin = time(19, 0)  # Hora final disponible
+        while hora <= hora_fin:
+            hora_str = hora.strftime('%H:%M')
+            if hora not in mantenimientos_ocupados:
+                horas_disponibles.append(hora_str)
+            hora = (datetime.combine(datetime.today(), hora) + timedelta(hours=1)).time()
+
+        return JsonResponse(horas_disponibles, safe=False)
+    else:
+        return JsonResponse([], safe=False)
+
+@login_required
+def agendar_mantenimiento(request):
+    if request.method == 'POST':
+        form = MantenimientoForm(request.POST)
+        if form.is_valid():
+            mantenimiento = form.save(commit=False)
+            mantenimiento.cliente = request.user.perfil  # Asignar el perfil del usuario
+
+            # Validar que la hora esté en intervalos de una hora exacta
+            hora_programada = mantenimiento.hora_programada
+            if hora_programada.minute != 0 or hora_programada.second != 0:
+                messages.error(request, 'La hora del mantenimiento debe estar en intervalos de una hora exacta.')
+                return render(request, 'core/agendar_mantenimiento.html', {'form': form, 'reservas': Mantenimiento.objects.filter(cliente=request.user.perfil)})
+
+            # Verificar si ya existe un mantenimiento en la misma fecha y hora
+            fecha_programada = mantenimiento.fecha_programada
+            if Mantenimiento.objects.filter(fecha_programada=fecha_programada, hora_programada=hora_programada).exists():
+                messages.error(request, 'Ya existe un mantenimiento programado para esa fecha y hora.')
+                return render(request, 'core/agendar_mantenimiento.html', {'form': form, 'reservas': Mantenimiento.objects.filter(cliente=request.user.perfil)})
+
+            # Validar que no se pueda agendar en días pasados
+            if fecha_programada < timezone.now().date():
+                messages.error(request, 'No se pueden agendar mantenimientos a días anteriores a la fecha actual.')
+                return render(request, 'core/agendar_mantenimiento.html', {'form': form, 'reservas': Mantenimiento.objects.filter(cliente=request.user.perfil)})
+
+            mantenimiento.save()
+            messages.success(request, 'Mantenimiento agendado correctamente.')
+            return redirect('agendar_mantenimiento')
+        else:
+            messages.error(request, 'Por favor corrige los errores a continuación.')
+    else:
+        form = MantenimientoForm()
+
+    # Obtener mantenimientos disponibles de lunes a viernes de 08:00 a 19:00
+    today = timezone.now().date()
+    start_of_next_week = today + timedelta(days=(7 - today.weekday()))
+    end_of_next_week = start_of_next_week + timedelta(days=7)
+
+    # Horas de inicio y fin para el filtro
+    hora_inicio = time(hour=8, minute=0)
+    hora_fin = time(hour=19, minute=0)
+
+    mantenimientos_ocupados = Mantenimiento.objects.filter(
+        fecha_programada__gte=start_of_next_week,
+        fecha_programada__lt=end_of_next_week,
+        hora_programada__gte=hora_inicio,
+        hora_programada__lte=hora_fin
+    ).values_list('fecha_programada', 'hora_programada')
+
+    dias_horas_ocupadas = [(fecha_programada, hora_programada.strftime('%H:%M')) for fecha_programada, hora_programada in mantenimientos_ocupados]
+
+    # Obtener las reservas del cliente actual
+    reservas = Mantenimiento.objects.filter(cliente=request.user.perfil)
+
+    context = {
+        'form': form,
+        'start_of_next_week': start_of_next_week,
+        'end_of_next_week': end_of_next_week,
+        'dias_horas_ocupadas': dias_horas_ocupadas,
+        'reservas': reservas,  # Pasar solo las reservas del cliente actual
+    }
+    return render(request, 'core/agendar_mantenimiento.html', context)
+
+
+
+@login_required
+def cancelar_reserva(request, reserva_id):
+    reserva = get_object_or_404(Mantenimiento, id=reserva_id, cliente=request.user.perfil)
+
+    if request.method == 'POST':
+        reserva.delete()
+        messages.success(request, 'Reserva cancelada correctamente.')
+        return HttpResponseRedirect(reverse('agendar_mantenimiento'))
+
+    return HttpResponseRedirect(reverse('agendar_mantenimiento'))
 
 @user_passes_test(es_personal_autenticado_y_activo)
-def usuarios(request, accion, id):
+def lista_mantenimientos(request):
+    mantenimientos = Mantenimiento.objects.all()
+    context = {
+        'mantenimientos': mantenimientos
+    }
+    return render(request, 'core/lista_mantenimientos.html', context)
+
+@user_passes_test(es_personal_autenticado_y_activo)
+def eliminar_mantenimiento(request, mantenimiento_id):
+    mantenimiento = get_object_or_404(Mantenimiento, id=mantenimiento_id)
+    if request.method == 'POST':
+        mantenimiento.delete()
+        return redirect('lista_mantenimientos')
+    context = {
+        'mantenimiento': mantenimiento
+    }
+    return render(request, 'core/eliminar_mantenimiento.html', context)
+
+@user_passes_test(es_personal_autenticado_y_activo)
+def mantenedor_usuarios(request, accion, id):
     
     usuario = User.objects.get(id=id) if int(id) > 0 else None
     perfil = usuario.perfil if usuario else None
@@ -313,7 +436,7 @@ def usuarios(request, accion, id):
             perfil.usuario_id = usuario.id
             perfil.save()
             messages.success(request, f'El usuario {usuario.first_name} {usuario.last_name} fue guardado.')
-            return redirect(usuarios, 'actualizar', usuario.id)
+            return redirect(mantenedor_usuarios, 'actualizar', usuario.id)
         else:
             messages.error(request, f'No fue posible guardar el nuevo usuario.')
             show_form_errors(request,[form_usuario, form_perfil])
@@ -325,7 +448,7 @@ def usuarios(request, accion, id):
         if accion == 'eliminar':
             eliminado, mensaje = eliminar_registro(User, id)
             messages.success(request, mensaje)
-            return redirect(usuarios, 'crear', '0')
+            return redirect(mantenedor_usuarios, 'crear', '0')
         else:
             form_usuario = UsuarioForm(instance=usuario)
             form_perfil = PerfilForm(instance=perfil)
@@ -341,7 +464,7 @@ def usuarios(request, accion, id):
         'usuarios': User.objects.all(),
      }
 
-    return render(request, 'core/usuarios.html', context)
+    return render(request, 'core/mantenedor_usuarios.html', context)
 
 @user_passes_test(es_personal_autenticado_y_activo)
 def bodega(request):
@@ -581,7 +704,7 @@ def agregar_producto_al_carrito(request, producto_id):
         return redirect(inicio)
     elif es_usuario_anonimo(request.user):
         messages.info(request, 'Para poder comprar, primero debes registrarte como cliente.')
-        return redirect(registrarme)
+        return redirect(registro)
 
     perfil = request.user.perfil
     producto = Producto.objects.get(id=producto_id)
@@ -623,7 +746,7 @@ def vaciar_carrito(request):
 # CAMBIO DE PASSWORD Y ENVIO DE PASSWORD PROVISORIA POR CORREO
 
 @login_required
-def mipassword(request):
+def contraseña(request):
 
     if request.method == 'POST':
 
@@ -644,7 +767,7 @@ def mipassword(request):
         'form': form
     }
 
-    return render(request, 'core/mipassword.html', context)
+    return render(request, 'core/contraseña.html', context)
 
 @user_passes_test(es_personal_autenticado_y_activo)
 def cambiar_password(request):
@@ -699,5 +822,5 @@ def poblar(request):
     # Opcionalmente se le puede enviar un correo único, para que los Administradores
     # del sistema puedan probar el cambio de password de los usuarios, en la página
     # de "Adminstración de usuarios".
-    poblar_bd('cri.gomezv@profesor.duoc.cl')
+    poblar_bd('vi.barrientosr@duocuc.cl')
     return redirect(inicio)

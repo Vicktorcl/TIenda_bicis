@@ -10,3 +10,6 @@ call pip install djangorestframework
 call pip install transbank-sdk
 call pip install django-extensions
 call pip install mssql-django
+call pip install django-bootstrap-v5
+call pip install bootstrap-py
+call pip install django-bootstrap-datepicker-plus

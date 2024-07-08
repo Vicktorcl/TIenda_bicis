@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'core',
     'apirest',
+    'bootstrap5',
+    'bootstrap_datepicker_plus'
 ]
 
 MIDDLEWARE = [
