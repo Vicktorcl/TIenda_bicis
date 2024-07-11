@@ -1,0 +1,130 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-3">
+    <h2>Agendar Hora Mantenimiento</h2>
+    <form method="POST" id="mantenimiento-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+            <strong>{{ error }}</strong><br>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-group">
+            {{ form.fecha_programada.label_tag }}
+            {{ form.fecha_programada }}
+            {% if form.fecha_programada.errors %}
+                {% for error in form.fecha_programada.errors %}
+                <div class="invalid-feedback d-block">
+                    <strong>{{ error }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.hora_programada.label_tag }}
+            {{ form.hora_programada }}
+            {% if form.hora_programada.errors %}
+                {% for error in form.hora_programada.errors %}
+                <div class="invalid-feedback d-block">
+                    <strong>{{ error }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div id="no-horas-disponibles" class="alert alert-danger text-center mt-2" style="display: none;">
+            No hay horas disponibles en la hora programada. Por favor, elija otro día.
+        </div>
+        <div class="form-group">
+            {{ form.descripcion_problema.label_tag }}
+            {{ form.descripcion_problema }}
+            {% if form.descripcion_problema.errors %}
+                {% for error in form.descripcion_problema.errors %}
+                <div class="invalid-feedback d-block">
+                    <strong>{{ error }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <br>
+        <div id="no-horas" class="alert alert-danger text-center mt-2" style="display: none;">No hay horas disponibles. Por favor, elija otro día.</div>
+        <div class="d-flex justify-content-center">
+            <button type="submit" class="btn btn-primary">Guardar Mantenimiento</button>
+        </div>
+    </form>
+
+    <h2 class="mt-5">Mis Reservas</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reserva in reservas %}
+            <tr>
+                <td>{{ reserva.fecha_programada }}</td>
+                <td>{{ reserva.hora_programada }}</td>
+                <td>{{ reserva.descripcion_problema }}</td>
+                <td>
+                    <form method="POST" action="{% url 'cancelar_reserva' reserva.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center">No tienes reservas programadas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}
+
+{% block script %}
+<script src="{% static 'core/js/mant_v.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fechaInput = document.querySelector('#id_fecha_programada');
+        const horaInput = document.querySelector('#id_hora_programada');
+        const noHorasDisponibles = document.querySelector('#no-horas-disponibles');
+        const noHoras = document.querySelector('#no-horas');
+
+        fechaInput.addEventListener('change', function() {
+            const fechaSeleccionada = this.value;
+            obtenerHorasDisponibles(fechaSeleccionada);
+        });
+
+        function obtenerHorasDisponibles(fecha) {
+            fetch(`/api/horas-disponibles/?fecha=${fecha}`)
+                .then(response => response.json())
+                .then(data => mostrarHorasDisponibles(data))
+                .catch(error => console.error('Error al obtener las horas disponibles:', error));
+        }
+
+        function mostrarHorasDisponibles(horasDisponibles) {
+            horaInput.innerHTML = ''; // Limpiar opciones previas
+            if (horasDisponibles.length === 0) {
+                noHorasDisponibles.style.display = 'block';
+                noHoras.style.display = 'none'; // Ocultar el mensaje de no horas disponibles
+            } else {
+                noHorasDisponibles.style.display = 'none';
+                horasDisponibles.forEach(hora => {
+                    const option = document.createElement('option');
+                    option.textContent = hora;
+                    option.value = hora;
+                    horaInput.appendChild(option);
+                });
+            }
+        }
+    });
+</script>
+{% endblock script %}

@@ -1,0 +1,20 @@
+h1 {
+  font-size: x-large;
+  color: rgb(0, 0, 0) !important;
+  font-weight: bolder;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+th {
+  vertical-align: top;
+  background-color: lightgray !important;
+}
+
+input, textarea, select {
+  border-color: darkgray !important; /* Cambia "red" al color deseado */
+}
+
+body {
+  background-color: #6c077b;
+}

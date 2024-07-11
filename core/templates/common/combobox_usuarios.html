@@ -1,0 +1,28 @@
+<div class="row justify-content-center">
+
+  <div class="col-5 mt-4">
+
+    <select id="user-select" class="form-select">
+      <option value="">Selecciona un usuario de prueba</option>
+      {% for perfil in perfiles %}
+        <option value="{{ perfil.usuario.username }}">
+          {{ perfil.usuario.first_name }} {{ perfil.usuario.last_name }}
+          (
+            {{ perfil.tipo_usuario }}
+            {% if perfil.tipo_usuario == 'Cliente' %}
+              {% if perfil.subscrito %}
+                PREMIUM
+              {% endif %}
+            {% endif %}
+          )
+        </option>
+      {% endfor %}
+    </select>
+  
+    <br>
+
+
+
+  </div>
+
+</div>

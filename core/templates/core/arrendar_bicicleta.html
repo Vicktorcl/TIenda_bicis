@@ -1,0 +1,156 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-3">
+    <h2>Arriendo de Bicicletas</h2>
+    <form method="POST" id="arriendo-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+            <strong>{{ error }}</strong><br>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-group">
+            {{ form.bicicleta.label_tag }}
+            {{ form.bicicleta }}
+            {% if form.bicicleta.errors %}
+                {% for error in form.bicicleta.errors %}
+                <div class="invalid-feedback d-block">
+                    <strong>{{ error }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.fecha_inicio.label_tag }}
+            {{ form.fecha_inicio }}
+            {% if form.fecha_inicio.errors %}
+                {% for error in form.fecha_inicio.errors %}
+                <div class="invalid-feedback d-block">
+                    <strong>{{ error }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.fecha_fin.label_tag }}
+            {{ form.fecha_fin }}
+            {% if form.fecha_fin.errors %}
+                {% for error in form.fecha_fin.errors %}
+                <div class="invalid-feedback d-block">
+                    <strong>{{ error }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="precio-total">Precio Total:</label>
+            <input type="text" id="precio-total" class="form-control" readonly>
+        </div>
+        <div class="d-flex justify-content-center">
+            <button type="submit" class="btn btn-primary">Arendar Bicicleta</button>
+        </div>
+    </form>
+
+    <h2 class="mt-5">Mis Arriendos</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Bicicleta</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Precio Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for arriendo in arriendos %}
+            <tr>
+                <td>{{ arriendo.bicicleta }}</td>
+                <td>{{ arriendo.fecha_inicio }}</td>
+                <td>{{ arriendo.fecha_fin }}</td>
+                <td>{{ arriendo.precio_total }}</td>
+                <td>
+                    <form method="POST" action="{% url 'cancelar_arriendo' arriendo.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">No tienes arriendos programados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}
+
+{% block script %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const bicicletaSelect = document.querySelector('#id_bicicleta');
+        const fechaInicioInput = document.querySelector('#id_fecha_inicio');
+        const fechaFinInput = document.querySelector('#id_fecha_fin');
+        const precioTotalInput = document.querySelector('#precio-total');
+
+        function calcularPrecioTotal() {
+            const bicicletaId = bicicletaSelect.value;
+            const fechaInicio = fechaInicioInput.value;
+            const fechaFin = fechaFinInput.value;
+
+            if (bicicletaId && fechaInicio && fechaFin) {
+                fetch(`/api/precio-arriendo/?bicicleta_id=${bicicletaId}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        precioTotalInput.value = data.precio_total;
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener el precio total:', error);
+                        precioTotalInput.value = 'Error';
+                    });
+            }
+        }
+
+        function obtenerFechasNoDisponibles() {
+            const bicicletaId = bicicletaSelect.value;
+            if (bicicletaId) {
+                fetch(`/api/fechas-no-disponibles/?bicicleta_id=${bicicletaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const fechasNoDisponibles = data.fechas_no_disponibles;
+                        const fechaInicio = new Date(fechaInicioInput.value);
+                        const fechaFin = new Date(fechaFinInput.value);
+
+                        fechaInicioInput.setAttribute('min', new Date().toISOString().split('T')[0]);
+                        fechaFinInput.setAttribute('min', new Date().toISOString().split('T')[0]);
+
+                        fechasNoDisponibles.forEach(dateStr => {
+                            const fecha = new Date(dateStr);
+                            if (fechaInicioInput.value && fechaFinInput.value) {
+                                if (fecha >= fechaInicio && fecha <= fechaFin) {
+                                    fechaInicioInput.value = '';
+                                    fechaFinInput.value = '';
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener las fechas no disponibles:', error);
+                    });
+            }
+        }
+
+        bicicletaSelect.addEventListener('change', () => {
+            obtenerFechasNoDisponibles();
+            calcularPrecioTotal();
+        });
+        fechaInicioInput.addEventListener('change', calcularPrecioTotal);
+        fechaFinInput.addEventListener('change', calcularPrecioTotal);
+    });
+</script>
+{% endblock script %}

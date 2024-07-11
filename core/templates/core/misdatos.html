@@ -1,0 +1,71 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<h1 class="text-center">Mis datos </h1>
+<br>
+  <form id="form" method="POST" enctype="multipart/form-data">
+
+    {% csrf_token %}
+
+    <div class="row">
+
+      <!-- AREA DE DATOS BASICOS: username, nombre, apellidos, correo y contraseñas -->
+      <div class="col-sm-12 col-md-4">
+
+        {{form_usuario|as_bootstrap_form:'help_text_visible=False' }}
+
+      </div>
+
+      <!-- AREA DE DATOS DE PERFIL: rut, dirección y subscrito (VER COMENTARIO "CHECKBOX SUBSCRITO" en script.js)  -->
+      <div class="col-sm-12 col-md-5">
+
+        {{ form_perfil|as_bootstrap_form }}
+
+      </div>
+
+      <!-- AREA DE IMAGEN DE PERFIL -->
+      <div class="col-sm-12 col-md-3 text-center">
+        <div class="row">
+          <!-- AREA DE CUADRO DE IMAGEN: Muestra la Imagen de perfil -->
+          <div class="col-sm-12" style="height: 220px">
+            <img id="cuadro-imagen" src="{% static 'core/img/sin-imagen.png' %}">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- AREA DE BOTONES -->
+    <div class="mt-2 text-center">
+
+      <button type="submit" class="btn btn-primary"> Actualizar mis datos </button>
+
+      <!-- AREA DE BOTON DE SELECCIONAR IMAGEN: Reemplaza el botón "Seleccionar archivo" por otro con Bootstrap (VER COMENTARIO "BOTON IMAGEN" en script.js) -->
+      <button class="btn btn-info" onclick="event.preventDefault(); document.getElementById('id_imagen').click(); "> Seleccionar imagen </button>  
+
+    </div>
+
+  </form>
+
+  <br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br><br>
+{% endblock content %}
+
+{% block script %}
+  <script src="{% static 'core/js/misdatos.js' %}"></script>
+{% endblock script %}
