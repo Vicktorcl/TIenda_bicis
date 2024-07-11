@@ -220,4 +220,15 @@ class ArriendoForm(forms.ModelForm):
             if arriendos_existentes.exists():
                 self.add_error(None, forms.ValidationError("La bicicleta no está disponible en el rango de fechas seleccionado."))
 
+            # Validar fechas no disponibles en la base de datos
+            fechas_no_disponibles = bicicleta.fechas_disponibles()
+            if fecha_inicio in fechas_no_disponibles or fecha_fin in fechas_no_disponibles:
+                raise ValidationError({
+                    'fecha_inicio': _("La fecha de inicio seleccionada no está disponible."),
+                    'fecha_fin': _("La fecha de fin seleccionada no está disponible.")
+                })
+
+            if fecha_inicio.weekday() >= 5 or fecha_fin.weekday() >= 5:
+                raise ValidationError(_("Las fechas de inicio y fin deben ser días hábiles (de lunes a viernes)."))
+
         return cleaned_data

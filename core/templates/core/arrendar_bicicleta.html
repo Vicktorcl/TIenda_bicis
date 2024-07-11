@@ -51,7 +51,7 @@
             <input type="text" id="precio-total" class="form-control" readonly>
         </div>
         <div class="d-flex justify-content-center">
-            <button type="submit" class="btn btn-primary">Arrendar Bicicleta</button>
+            <button type="submit" class="btn btn-primary">Arendar Bicicleta</button>
         </div>
     </form>
 
@@ -98,31 +98,6 @@
         const fechaFinInput = document.querySelector('#id_fecha_fin');
         const precioTotalInput = document.querySelector('#precio-total');
 
-        function desactivarFechasNoDisponibles() {
-            const bicicletaId = bicicletaSelect.value;
-            const fechaInicio = new Date(fechaInicioInput.value);
-            const fechaFin = new Date(fechaFinInput.value);
-
-            if (bicicletaId && fechaInicioInput.value && fechaFinInput.value) {
-                fetch(`/api/fechas-no-disponibles/?bicicleta_id=${bicicletaId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const fechasNoDisponibles = data.fechas_no_disponibles.map(dateStr => new Date(dateStr));
-
-                        const disabledDates = fechasNoDisponibles.filter(fecha => fecha >= fechaInicio && fecha <= fechaFin);
-
-                        fechaInicioInput.dataset.datesDisabled = JSON.stringify(disabledDates);
-                        fechaFinInput.dataset.datesDisabled = JSON.stringify(disabledDates);
-
-                        // Recalcular el precio total al deshabilitar fechas
-                        calcularPrecioTotal();
-                    })
-                    .catch(error => {
-                        console.error('Error al obtener las fechas no disponibles:', error);
-                    });
-            }
-        }
-
         function calcularPrecioTotal() {
             const bicicletaId = bicicletaSelect.value;
             const fechaInicio = fechaInicioInput.value;
@@ -138,26 +113,44 @@
                         console.error('Error al obtener el precio total:', error);
                         precioTotalInput.value = 'Error';
                     });
-            } else {
-                precioTotalInput.value = '';
             }
         }
 
-        // Event listeners para cambios en fechas y selección de bicicleta
-        fechaInicioInput.addEventListener('change', function() {
-            desactivarFechasNoDisponibles();
-        });
+        function obtenerFechasNoDisponibles() {
+            const bicicletaId = bicicletaSelect.value;
+            if (bicicletaId) {
+                fetch(`/api/fechas-no-disponibles/?bicicleta_id=${bicicletaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const fechasNoDisponibles = data.fechas_no_disponibles;
+                        const fechaInicio = new Date(fechaInicioInput.value);
+                        const fechaFin = new Date(fechaFinInput.value);
 
-        fechaFinInput.addEventListener('change', function() {
-            desactivarFechasNoDisponibles();
-        });
+                        fechaInicioInput.setAttribute('min', new Date().toISOString().split('T')[0]);
+                        fechaFinInput.setAttribute('min', new Date().toISOString().split('T')[0]);
 
-        bicicletaSelect.addEventListener('change', function() {
-            desactivarFechasNoDisponibles();
-        });
+                        fechasNoDisponibles.forEach(dateStr => {
+                            const fecha = new Date(dateStr);
+                            if (fechaInicioInput.value && fechaFinInput.value) {
+                                if (fecha >= fechaInicio && fecha <= fechaFin) {
+                                    fechaInicioInput.value = '';
+                                    fechaFinInput.value = '';
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener las fechas no disponibles:', error);
+                    });
+            }
+        }
 
-        // Llamar a desactivarFechasNoDisponibles al cargar la página
-        desactivarFechasNoDisponibles();
+        bicicletaSelect.addEventListener('change', () => {
+            obtenerFechasNoDisponibles();
+            calcularPrecioTotal();
+        });
+        fechaInicioInput.addEventListener('change', calcularPrecioTotal);
+        fechaFinInput.addEventListener('change', calcularPrecioTotal);
     });
 </script>
 {% endblock script %}

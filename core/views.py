@@ -879,11 +879,21 @@ def calcular_precio_arriendo(request):
 def fechas_no_disponibles(request):
     bicicleta_id = request.GET.get('bicicleta_id')
     if bicicleta_id:
-        arriendos = Arriendo.objects.filter(bicicleta_id=bicicleta_id)
+        try:
+            bicicleta = Bicicleta.objects.get(id=bicicleta_id)
+        except Bicicleta.DoesNotExist:
+            return JsonResponse({'error': 'Bicicleta no encontrada'}, status=400)
+
+        arriendos = Arriendo.objects.filter(bicicleta=bicicleta)
         fechas_no_disponibles = []
+
         for arriendo in arriendos:
             rango_fechas = [arriendo.fecha_inicio + timedelta(days=i) for i in range((arriendo.fecha_fin - arriendo.fecha_inicio).days + 1)]
             fechas_no_disponibles.extend(rango_fechas)
+
         fechas_no_disponibles = list(set(fechas_no_disponibles))  # Eliminar fechas duplicadas
+        fechas_no_disponibles = [fecha.strftime('%Y-%m-%d') for fecha in fechas_no_disponibles]  # Formato ISO YYYY-MM-DD
+
         return JsonResponse({'fechas_no_disponibles': fechas_no_disponibles})
-    return JsonResponse({'error': 'Bicicleta no encontrada'}, status=400)
+
+    return JsonResponse({'error': 'Bicicleta no especificada'}, status=400)
