@@ -7,7 +7,9 @@ from django.db import connection
 from django.db.models import UniqueConstraint
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from datetime import timedelta
+from datetime import timedelta, date
+from django.utils import timezone
+
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100, blank=False, null=False, verbose_name='Nombre categoría')
@@ -262,3 +264,93 @@ class Mantenimiento(models.Model):
 
     def __str__(self):
         return f'Mantenimiento el {self.fecha_programada} a las {self.hora_programada} por {self.cliente.usuario.first_name} {self.cliente.usuario.last_name}'
+    
+    
+class Bicicleta(models.Model):
+    MARCAS = [
+        ('TREK', 'Trek'),
+        ('GIANT', 'Giant'),
+        ('SPECIALIZED', 'Specialized'),
+        ('CANNONDALE', 'Cannondale'),
+    ]
+
+    marca = models.CharField(max_length=50, choices=MARCAS)
+    modelo = models.CharField(max_length=100)
+    año = models.PositiveIntegerField()
+    precio_por_dia = models.IntegerField(blank=False, null=False, verbose_name='Precio_Por_Dia')
+    disponible = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'bicicletas'
+        verbose_name = 'Bicicleta'
+        verbose_name_plural = 'Bicicletas'
+
+    def __str__(self):
+        return f"{self.marca} {self.modelo} ({self.año})"
+
+    def fechas_disponibles(self):
+        arriendos = self.arriendo_set.all()
+
+        if not arriendos.exists():
+            return None
+
+        fechas_ocupadas = set()
+        for arriendo in arriendos:
+            fechas_ocupadas.update(self.get_dates_range(arriendo.fecha_inicio, arriendo.fecha_fin))
+
+        fechas_totales = set()
+        fecha_actual = timezone.now().date()
+        while fecha_actual.year <= self.año:
+            if fecha_actual.weekday() < 5:  # Excluir sábado y domingo
+                fechas_totales.add(fecha_actual)
+            fecha_actual += timedelta(days=1)
+
+        fechas_disponibles = fechas_totales - fechas_ocupadas
+        return fechas_disponibles
+
+    def get_dates_range(self, start_date, end_date):
+        dates = []
+        current_date = start_date
+        while current_date <= end_date:
+            dates.append(current_date)
+            current_date += timedelta(days=1)
+        return dates
+
+
+class Arriendo(models.Model):
+    bicicleta = models.ForeignKey(Bicicleta, on_delete=models.CASCADE)
+    cliente = models.ForeignKey(Perfil, on_delete=models.DO_NOTHING, verbose_name='Cliente', blank=False, null=False)
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    precio_total = models.IntegerField(blank=False, null=False, verbose_name='Precio_Total')
+
+    class Meta:
+        db_table = 'arriendos'
+        verbose_name = 'Arriendo'
+        verbose_name_plural = 'Arriendos'
+
+    def __str__(self):
+        return f"Arriendo de {self.bicicleta} por {self.cliente.usuario.first_name} {self.cliente.usuario.last_name}"
+
+    def save(self, *args, **kwargs):
+        # Calcular el precio total basado en la duración del arriendo
+        dias_arriendo = (self.fecha_fin - self.fecha_inicio).days + 1
+        self.precio_total = dias_arriendo * self.bicicleta.precio_por_dia
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        if self.fecha_inicio < timezone.now().date():
+            raise ValidationError({'fecha_inicio': _("La fecha de inicio no puede ser anterior a la fecha actual.")})
+        if self.fecha_inicio > self.fecha_fin:
+            raise ValidationError({
+                'fecha_inicio': _("La fecha de inicio no puede ser posterior a la fecha de fin."),
+                'fecha_fin': _("La fecha de fin no puede ser anterior a la fecha de inicio.")
+            })
+        # Verificar la disponibilidad de la bicicleta en el rango de fechas
+        arriendos_existentes = Arriendo.objects.filter(
+            bicicleta=self.bicicleta,
+            fecha_fin__gte=self.fecha_inicio,
+            fecha_inicio__lte=self.fecha_fin
+        ).exclude(pk=self.pk)
+        if arriendos_existentes.exists():
+            raise ValidationError(_("La bicicleta no está disponible en el rango de fechas seleccionado."))

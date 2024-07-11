@@ -2,10 +2,11 @@ from django import forms
 from django.forms import ModelForm, Form
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Categoria, Producto, Perfil, Mantenimiento
+from .models import Categoria, Producto, Perfil, Mantenimiento, Arriendo, Bicicleta
 from bootstrap_datepicker_plus.widgets import DateTimePickerInput
 from django.core.exceptions import ValidationError
 from datetime import date, datetime
+from django.utils import timezone
 from datetime import time, timedelta
 
 
@@ -179,3 +180,44 @@ class MantenimientoForm(forms.ModelForm):
             hora_actual += intervalo
 
         return horas_disponibles
+
+
+class ArriendoForm(forms.ModelForm):
+    class Meta:
+        model = Arriendo
+        fields = ['bicicleta', 'fecha_inicio', 'fecha_fin']
+        widgets = {
+            'bicicleta': forms.Select(attrs={'class': 'form-control'}),
+            'fecha_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_fin': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['fecha_inicio'].queryset = Bicicleta.objects.none()  # Reiniciar queryset inicial
+
+        if 'bicicleta' in self.data:
+            try:
+                bicicleta_id = int(self.data.get('bicicleta'))
+                self.fields['fecha_inicio'].queryset = Bicicleta.objects.get(id=bicicleta_id).fechas_disponibles()
+            except (ValueError, TypeError, Bicicleta.DoesNotExist):
+                pass  # Manejo de error si no se puede convertir el id de la bicicleta o no se encuentra
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+        bicicleta = cleaned_data.get('bicicleta')
+
+        if fecha_inicio and fecha_fin and bicicleta:
+            # Verificar la disponibilidad de la bicicleta en el rango de fechas
+            arriendos_existentes = Arriendo.objects.filter(
+                bicicleta=bicicleta,
+                fecha_fin__gte=fecha_inicio,
+                fecha_inicio__lte=fecha_fin
+            ).exclude(pk=self.instance.pk if self.instance else None)  # Excluir el arriendo actual si se está editando
+
+            if arriendos_existentes.exists():
+                self.add_error(None, forms.ValidationError("La bicicleta no está disponible en el rango de fechas seleccionado."))
+
+        return cleaned_data

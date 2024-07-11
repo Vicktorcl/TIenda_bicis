@@ -9,18 +9,21 @@ from django.urls import reverse
 from django.utils.safestring import SafeString
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Producto, Boleta, Carrito, DetalleBoleta, Bodega, Perfil, Mantenimiento
-from .forms import ProductoForm, BodegaForm, IngresarForm, UsuarioForm, PerfilForm
+from .models import Bicicleta, Arriendo
+from .forms import ProductoForm, BodegaForm, IngresarForm, UsuarioForm, PerfilForm, ArriendoForm
 from .forms import RegistroUsuarioForm, RegistroPerfilForm, MantenimientoForm
 from .templatetags.custom_filters import formatear_dinero, formatear_numero
 from .tools import eliminar_registro, verificar_eliminar_registro, show_form_errors
 from django.core.mail import send_mail
 from django.utils import timezone
-from datetime import timedelta, time, datetime
+from datetime import timedelta, time, datetime, date
 from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_GET
 from django.urls import reverse
 from django.utils.timezone import now
-
+from django.template import loader
+from core.templatetags.custom_filters import add_class
+from django.views.decorators.http import require_GET, require_POST
 # *********************************************************************************************************#
 #                                                                                                          #
 # INSTRUCCIONES PARA EL ALUMNO, PUEDES SEGUIR EL VIDEO TUTORIAL, COMPLETAR EL CODIGO E INCORPORAR EL TUYO: #
@@ -824,3 +827,63 @@ def poblar(request):
     # de "Adminstración de usuarios".
     poblar_bd('vi.barrientosr@duocuc.cl')
     return redirect(inicio)
+
+@login_required
+def arrendar_bicicleta(request):
+    if request.method == 'POST':
+        form = ArriendoForm(request.POST)
+        form.fields['fecha_inicio'].queryset = Bicicleta.objects.none()  # Reiniciar queryset inicial
+
+        if form.is_valid():
+            arriendo = form.save(commit=False)
+            arriendo.cliente = request.user.perfil  # Asignar el perfil del usuario
+            arriendo.save()
+            messages.success(request, 'Bicicleta arrendada correctamente.')
+            return redirect('arrendar_bicicleta')
+        else:
+            messages.error(request, 'Por favor corrige los errores a continuación.')
+    else:
+        form = ArriendoForm()
+
+    form.fields['fecha_inicio'].queryset = Bicicleta.objects.none()  # Reiniciar queryset inicial
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'core/arrendar_bicicleta.html', context)
+
+@require_POST
+def cancelar_arriendo(request, arriendo_id):
+    arriendo = get_object_or_404(Arriendo, id=arriendo_id, cliente=request.user.perfil)
+    arriendo.delete()
+    messages.success(request, 'Arriendo cancelado correctamente.')
+    return redirect('arrendar_bicicleta')
+
+@require_GET
+def calcular_precio_arriendo(request):
+    bicicleta_id = request.GET.get('bicicleta_id')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    try:
+        bicicleta = Bicicleta.objects.get(id=bicicleta_id)
+        fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+        dias_arriendo = (fecha_fin - fecha_inicio).days + 1
+        precio_total = dias_arriendo * bicicleta.precio_por_dia
+        return JsonResponse({'precio_total': precio_total})
+    except (Bicicleta.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+
+@require_GET
+def fechas_no_disponibles(request):
+    bicicleta_id = request.GET.get('bicicleta_id')
+    if bicicleta_id:
+        arriendos = Arriendo.objects.filter(bicicleta_id=bicicleta_id)
+        fechas_no_disponibles = []
+        for arriendo in arriendos:
+            rango_fechas = [arriendo.fecha_inicio + timedelta(days=i) for i in range((arriendo.fecha_fin - arriendo.fecha_inicio).days + 1)]
+            fechas_no_disponibles.extend(rango_fechas)
+        fechas_no_disponibles = list(set(fechas_no_disponibles))  # Eliminar fechas duplicadas
+        return JsonResponse({'fechas_no_disponibles': fechas_no_disponibles})
+    return JsonResponse({'error': 'Bicicleta no encontrada'}, status=400)
