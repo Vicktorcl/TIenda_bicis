@@ -938,3 +938,60 @@ def mantenedor_bicicletas(request):
                 return redirect('mantenedor_bicicletas')
 
     return render(request, 'core/mantenedor_bicicletas.html', {'form': form, 'bicicletas': bicicletas, 'edit_id': request.GET.get('edit_id')})
+
+@user_passes_test(es_personal_autenticado_y_activo)
+def mantenedor_arriendos(request):
+    arriendos = Arriendo.objects.all()
+    if request.method == 'POST':
+        if 'edit' in request.POST:
+            arriendo_id = request.POST.get('arriendo_id')
+            arriendo = get_object_or_404(Arriendo, id=arriendo_id)
+            form = ArriendoForm(request.POST, instance=arriendo)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Arriendo actualizado correctamente.')
+                return redirect('mantenedor_arriendos')
+        elif 'delete' in request.POST:
+            arriendo_id = request.POST.get('arriendo_id')
+            arriendo = get_object_or_404(Arriendo, id=arriendo_id)
+            arriendo.delete()
+            messages.success(request, 'Arriendo eliminado correctamente.')
+            return redirect('mantenedor_arriendos')
+    else:
+        form = ArriendoForm()
+
+    context = {
+        'arriendos': arriendos,
+        'form': form,
+    }
+    return render(request, 'core/mantenedor_arriendos.html', context)
+
+
+@user_passes_test(es_personal_autenticado_y_activo)
+def editar_arriendo(request, id):
+    arriendo = get_object_or_404(Arriendo, id=id)
+    if request.method == 'POST':
+        form = ArriendoForm(request.POST, instance=arriendo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Arriendo actualizado correctamente.')
+            return redirect('mantenedor_arriendos')
+        else:
+            messages.error(request, 'Por favor corrige los errores a continuación.')
+    else:
+        form = ArriendoForm(instance=arriendo)
+    
+    context = {
+        'form': form,
+        'arriendo': arriendo,
+    }
+    return render(request, 'core/mantenedor_arriendos.html', context)
+
+@user_passes_test(es_personal_autenticado_y_activo)
+def eliminar_arriendo(request, id):
+    arriendo = get_object_or_404(Arriendo, id=id)
+    if request.method == 'POST':
+        arriendo.delete()
+        messages.success(request, 'Arriendo eliminado correctamente.')
+        return redirect('mantenedor_arriendos')
+    return redirect('mantenedor_arriendos')

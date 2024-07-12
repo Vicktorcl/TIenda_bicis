@@ -1,0 +1,85 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Mantenedor de Arriendos</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Bicicleta</th>
+                <th>Cliente</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Precio Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for arriendo in arriendos %}
+            <tr>
+                <td>{{ arriendo.bicicleta }}</td>
+                <td>{{ arriendo.cliente.usuario.username }}</td>
+                <td>{{ arriendo.fecha_inicio }}</td>
+                <td>{{ arriendo.fecha_fin }}</td>
+                <td>{{ arriendo.precio_total }}</td>
+                <td>
+                    
+                    <form method="POST" action="{% url 'eliminar_arriendo' arriendo.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+
+            <!-- Modal para editar arriendo -->
+            <div class="modal fade" id="editArriendoModal{{ arriendo.id }}" tabindex="-1" aria-labelledby="editArriendoModalLabel{{ arriendo.id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editArriendoModalLabel{{ arriendo.id }}">Editar Arriendo</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="POST" action="{% url 'editar_arriendo' arriendo.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="id_bicicleta" class="form-label">Bicicleta</label>
+                                    <select name="bicicleta" class="form-control" id="id_bicicleta">
+                                        {% for bicicleta in bicicletas %}
+                                        <option value="{{ bicicleta.id }}" {% if arriendo.bicicleta.id == bicicleta.id %}selected{% endif %}>
+                                            {{ bicicleta }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="id_cliente" class="form-label">Cliente</label>
+                                    <input type="text" name="cliente" class="form-control" id="id_cliente" value="{{ arriendo.cliente.usuario.username }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="id_fecha_inicio" class="form-label">Fecha Inicio</label>
+                                    <input type="date" name="fecha_inicio" class="form-control" id="id_fecha_inicio" value="{{ arriendo.fecha_inicio }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="id_fecha_fin" class="form-label">Fecha Fin</label>
+                                    <input type="date" name="fecha_fin" class="form-control" id="id_fecha_fin" value="{{ arriendo.fecha_fin }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="id_precio_total" class="form-label">Precio Total</label>
+                                    <input type="number" name="precio_total" class="form-control" id="id_precio_total" value="{{ arriendo.precio_total }}">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">No hay arriendos registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}

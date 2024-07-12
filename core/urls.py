@@ -5,6 +5,7 @@ from .views import misdatos, miscompras, salir, carrito, ficha
 from .views import cambiar_estado_boleta, poblar, obtener_productos, eliminar_producto_en_bodega
 from .views import api_ropa, eliminar_producto_en_carrito, agregar_producto_al_carrito, agendar_mantenimiento, arrendar_bicicleta
 from .views import vaciar_carrito, contraseña, fechas_no_disponibles, cambiar_password, comprar_ahora, administrar_tienda, cancelar_reserva, cancelar_arriendo
+from .views import mantenedor_arriendos, editar_arriendo, eliminar_arriendo
 from . import views
 
 urlpatterns = [
@@ -45,4 +46,8 @@ urlpatterns = [
     path('api/precio-arriendo/', views.calcular_precio_arriendo, name='calcular_precio_arriendo'),
     path('api/fechas-no-disponibles/', fechas_no_disponibles, name='fechas_no_disponibles'),
     path('mantenedor_bicicletas/', views.mantenedor_bicicletas, name='mantenedor_bicicletas'),
+    path('mantenedor_arriendos/', mantenedor_arriendos, name='mantenedor_arriendos'),
+    path('editar_arriendo/<int:id>/', editar_arriendo, name='editar_arriendo'),
+    path('eliminar_arriendo/<int:id>/', eliminar_arriendo, name='eliminar_arriendo'),
+
 ]
