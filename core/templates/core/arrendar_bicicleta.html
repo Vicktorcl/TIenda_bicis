@@ -54,40 +54,48 @@
             <button type="submit" class="btn btn-primary">Arendar Bicicleta</button>
         </div>
     </form>
-
-    <h2 class="mt-5">Mis Arriendos</h2>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Bicicleta</th>
-                <th>Fecha Inicio</th>
-                <th>Fecha Fin</th>
-                <th>Precio Total</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for arriendo in arriendos %}
-            <tr>
-                <td>{{ arriendo.bicicleta }}</td>
-                <td>{{ arriendo.fecha_inicio }}</td>
-                <td>{{ arriendo.fecha_fin }}</td>
-                <td>{{ arriendo.precio_total }}</td>
-                <td>
-                    <form method="POST" action="{% url 'cancelar_arriendo' arriendo.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" class="text-center">No tienes arriendos programados.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
 </div>
+
+    <div class="container">
+        <h2 class="mt-5">Mis Arriendos</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Bicicleta</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Precio Total</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if arriendos %}
+                    {% for arriendo in arriendos %}
+                    <tr>
+                        <td>{{ arriendo.bicicleta }}</td>
+                        <td>{{ arriendo.fecha_inicio }}</td>
+                        <td>{{ arriendo.fecha_fin }}</td>
+                        <td>{{ arriendo.precio_total }}</td>
+                        <td>
+                            <form method="POST" action="{% url 'cancelar_arriendo' arriendo.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No tienes arriendos programados.</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">No tienes arriendos programados.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
 {% endblock content %}
 
 {% block script %}

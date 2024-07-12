@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from datetime import date, datetime
 from django.utils import timezone
 from datetime import time, timedelta
-
+from django.utils.translation import gettext_lazy as _
 
                                                                                                 
 class ProductoForm(ModelForm):
@@ -194,7 +194,9 @@ class ArriendoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['fecha_inicio'].queryset = Bicicleta.objects.none()  # Reiniciar queryset inicial
+        
+        # Reiniciar el queryset de bicicleta
+        self.fields['bicicleta'].queryset = Bicicleta.objects.filter(disponible=True)
 
         if 'bicicleta' in self.data:
             try:
@@ -222,13 +224,26 @@ class ArriendoForm(forms.ModelForm):
 
             # Validar fechas no disponibles en la base de datos
             fechas_no_disponibles = bicicleta.fechas_disponibles()
-            if fecha_inicio in fechas_no_disponibles or fecha_fin in fechas_no_disponibles:
-                raise ValidationError({
-                    'fecha_inicio': _("La fecha de inicio seleccionada no está disponible."),
-                    'fecha_fin': _("La fecha de fin seleccionada no está disponible.")
-                })
+            if fechas_no_disponibles is not None:
+                if fecha_inicio in fechas_no_disponibles or fecha_fin in fechas_no_disponibles:
+                    raise forms.ValidationError({
+                        'fecha_inicio': _("La fecha de inicio seleccionada no está disponible."),
+                        'fecha_fin': _("La fecha de fin seleccionada no está disponible.")
+                    })
 
             if fecha_inicio.weekday() >= 5 or fecha_fin.weekday() >= 5:
-                raise ValidationError(_("Las fechas de inicio y fin deben ser días hábiles (de lunes a viernes)."))
+                raise forms.ValidationError(_("Las fechas de inicio y fin deben ser días hábiles (de lunes a viernes)."))
 
         return cleaned_data
+    
+class BicicletaForm(forms.ModelForm):
+    class Meta:
+        model = Bicicleta
+        fields = ['marca', 'modelo', 'año', 'precio_por_dia', 'disponible']
+        widgets = {
+            'marca': forms.Select(attrs={'class': 'form-control'}),
+            'modelo': forms.TextInput(attrs={'class': 'form-control'}),
+            'año': forms.NumberInput(attrs={'class': 'form-control'}),
+            'precio_por_dia': forms.NumberInput(attrs={'class': 'form-control'}),
+            'disponible': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }

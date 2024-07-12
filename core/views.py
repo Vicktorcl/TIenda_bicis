@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Producto, Boleta, Carrito, DetalleBoleta, Bodega, Perfil, Mantenimiento
 from .models import Bicicleta, Arriendo
 from .forms import ProductoForm, BodegaForm, IngresarForm, UsuarioForm, PerfilForm, ArriendoForm
-from .forms import RegistroUsuarioForm, RegistroPerfilForm, MantenimientoForm
+from .forms import RegistroUsuarioForm, RegistroPerfilForm, MantenimientoForm, BicicletaForm
 from .templatetags.custom_filters import formatear_dinero, formatear_numero
 from .tools import eliminar_registro, verificar_eliminar_registro, show_form_errors
 from django.core.mail import send_mail
@@ -795,7 +795,7 @@ def cambiar_password(request):
                 messages.error(request, 'La cuenta o la password no son correctos')
         else:
             messages.error(request, 'El usuario al que quiere generar una nueva contraseña ya no existe en el sistema')
-    return redirect(usuarios, 'crear', '0')
+    return redirect(mantenedor_usuarios, 'crear', '0')
 
 def enviar_correo_cambio_password(request, user, password):
     try:
@@ -828,12 +828,11 @@ def poblar(request):
     poblar_bd('vi.barrientosr@duocuc.cl')
     return redirect(inicio)
 
+
 @login_required
 def arrendar_bicicleta(request):
     if request.method == 'POST':
         form = ArriendoForm(request.POST)
-        form.fields['fecha_inicio'].queryset = Bicicleta.objects.none()  # Reiniciar queryset inicial
-
         if form.is_valid():
             arriendo = form.save(commit=False)
             arriendo.cliente = request.user.perfil  # Asignar el perfil del usuario
@@ -845,10 +844,24 @@ def arrendar_bicicleta(request):
     else:
         form = ArriendoForm()
 
-    form.fields['fecha_inicio'].queryset = Bicicleta.objects.none()  # Reiniciar queryset inicial
+    # Reiniciar el queryset de fecha_inicio basado en la bicicleta seleccionada
+    bicicleta_id = request.POST.get('bicicleta') if request.method == 'POST' else None
+    if bicicleta_id:
+        try:
+            bicicleta = Bicicleta.objects.get(id=int(bicicleta_id))
+            form.fields['fecha_inicio'].queryset = bicicleta.fechas_disponibles()
+        except (ValueError, TypeError, Bicicleta.DoesNotExist):
+            form.fields['fecha_inicio'].queryset = Bicicleta.objects.none()
+    else:
+        form.fields['fecha_inicio'].queryset = Bicicleta.objects.none()
+
+    # Obtener los arriendos del cliente actual
+    perfil_usuario = request.user.perfil
+    arriendos = Arriendo.objects.filter(cliente=perfil_usuario)
 
     context = {
         'form': form,
+        'arriendos': arriendos,
     }
     return render(request, 'core/arrendar_bicicleta.html', context)
 
@@ -897,3 +910,31 @@ def fechas_no_disponibles(request):
         return JsonResponse({'fechas_no_disponibles': fechas_no_disponibles})
 
     return JsonResponse({'error': 'Bicicleta no especificada'}, status=400)
+
+@user_passes_test(es_personal_autenticado_y_activo)
+def mantenedor_bicicletas(request):
+    bicicletas = Bicicleta.objects.all()
+    form = BicicletaForm()
+
+    if 'edit_id' in request.GET:
+        bicicleta = get_object_or_404(Bicicleta, id=request.GET.get('edit_id'))
+        form = BicicletaForm(instance=bicicleta)
+
+    if request.method == 'POST':
+        if 'delete_id' in request.POST:
+            bicicleta = get_object_or_404(Bicicleta, id=request.POST.get('delete_id'))
+            bicicleta.delete()
+            return redirect('mantenedor_bicicletas')
+        else:
+            edit_id = request.POST.get('edit_id')
+            if edit_id:
+                bicicleta = get_object_or_404(Bicicleta, id=edit_id)
+                form = BicicletaForm(request.POST, instance=bicicleta)
+            else:
+                form = BicicletaForm(request.POST)
+
+            if form.is_valid():
+                form.save()
+                return redirect('mantenedor_bicicletas')
+
+    return render(request, 'core/mantenedor_bicicletas.html', {'form': form, 'bicicletas': bicicletas, 'edit_id': request.GET.get('edit_id')})

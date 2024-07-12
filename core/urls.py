@@ -44,4 +44,5 @@ urlpatterns = [
     path('cancelar_arriendo/<int:arriendo_id>/', cancelar_arriendo, name='cancelar_arriendo'),
     path('api/precio-arriendo/', views.calcular_precio_arriendo, name='calcular_precio_arriendo'),
     path('api/fechas-no-disponibles/', fechas_no_disponibles, name='fechas_no_disponibles'),
+    path('mantenedor_bicicletas/', views.mantenedor_bicicletas, name='mantenedor_bicicletas'),
 ]
