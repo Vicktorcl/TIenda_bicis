@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'core',
     'apirest',
     'bootstrap5',
-    'bootstrap_datepicker_plus'
+    'bootstrap_datepicker_plus',
 ]
 
 MIDDLEWARE = [
@@ -165,24 +165,19 @@ LOGIN_REDIRECT_URL = '/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CONFIGURACIÓN PARA ENVIAR CORREOS ELECTRÓNICOS A TRAVÉS DEL SERVIDOR DE GMAIL
-# Pasos a seguir:
-# 1. Crear una cuenta de gmail, la mía es: "info.faithfulpet@gmail.com" password "Faith@fulpet@1990"
-# 2. Ir a "Administrar tu cuenta de Google" que se encuentra seleccionando tu foto de perfil
-# 3. Seleccionar la opción "Seguridad" en el menú de la izquierda
-# 4. Activar la verificación en 2 pasos (opción "Teléfonos de la Verificación en 2 pasos")
-# 5. Visitar: https://security.google.com/settings/security/apppasswords
-# 6. Ingresar con tu correo y password de tu cuenta de gmail
-#    En mi caso con la cuenta recién creada "info.faithfulpet@gmail.com" y contraseña "Faith@fulpet@1990"
-# 7. En combobox "Seleccionar app" escoger "Otra (nombre personalizado)" y escibir "faithfulpet" (nombre de mi aplicación)
-# 8. Presionar en botón "Generar"
-# 9. Copiar la password 16 letras que aparece en pantalla y asignarla a la variable "EMAIL_HOST_PASSWORD"
-# 10. Configurar las variables 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'info.faithfulpet@gmail.com'  # Reemplaza con tu dirección de correo Gmail
-EMAIL_HOST_PASSWORD = 'qilcuwkdxlerbqae' # Reemplaza con tu contraseña de "aplicación generada"
+EMAIL_HOST_USER = 'info.ofertas.webpage@gmail.com'  # Reemplaza con tu dirección de correo Gmail
+EMAIL_HOST_PASSWORD = 'bfjokwpuchmevrnc' # Reemplaza con tu contraseña de "aplicación generada"
+
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# Parámetros para la integración con Transbank
+TRANSBANK_API_KEY = '597055555532'
+TRANSBANK_SECRET = 'XWZzKm0OKH3IXUPf'
+TRANSBANK_ENVIRONMENT = 'INTEGRACION'  # Asegúrate de que este valor sea correcto
+COMMERCE_CODE = '597055555532'  # Código de comercio para pruebas de Webpay Plus
+INTEGRATION_TYPE = 'INTEGRACION'  # Modo de integración

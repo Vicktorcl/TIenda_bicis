@@ -49,5 +49,7 @@ urlpatterns = [
     path('mantenedor_arriendos/', mantenedor_arriendos, name='mantenedor_arriendos'),
     path('editar_arriendo/<int:id>/', editar_arriendo, name='editar_arriendo'),
     path('eliminar_arriendo/<int:id>/', eliminar_arriendo, name='eliminar_arriendo'),
+    path('iniciar_pago/', views.iniciar_pago, name='iniciar_pago'),
+    path('pago_exitoso/', views.pago_exitoso, name='pago_exitoso'),
 
 ]

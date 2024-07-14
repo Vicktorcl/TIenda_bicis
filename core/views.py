@@ -24,6 +24,11 @@ from django.utils.timezone import now
 from django.template import loader
 from core.templatetags.custom_filters import add_class
 from django.views.decorators.http import require_GET, require_POST
+# from transbank.sdk.webpay.webpay_plus.transaction import Transaction
+# from transbank.sdk.webpay.webpay_plus.options import WebpayOptions
+# from transbank.sdk import Transaction, WebpayOptions
+from django.conf import settings
+
 # *********************************************************************************************************#
 #                                                                                                          #
 # INSTRUCCIONES PARA EL ALUMNO, PUEDES SEGUIR EL VIDEO TUTORIAL, COMPLETAR EL CODIGO E INCORPORAR EL TUYO: #
@@ -995,3 +1000,87 @@ def eliminar_arriendo(request, id):
         messages.success(request, 'Arriendo eliminado correctamente.')
         return redirect('mantenedor_arriendos')
     return redirect('mantenedor_arriendos')
+
+
+def iniciar_pago(request):
+    perfil = request.user.perfil
+    carrito_items = Carrito.objects.filter(cliente=perfil)
+    
+    if not carrito_items:
+        return redirect('carrito')  # Redirige a la vista del carrito si está vacío
+
+    # Obtener el último número de boleta utilizado
+    ultima_boleta = Boleta.objects.last()
+    if ultima_boleta:
+        ultima_nro_boleta = ultima_boleta.nro_boleta
+    else:
+        ultima_nro_boleta = 0
+
+    # Incrementar el número de boleta para la nueva compra
+    nuevo_nro_boleta = ultima_nro_boleta + 1
+
+    # Guarda la orden de compra temporalmente para referencias futuras
+    request.session['buy_order'] = nuevo_nro_boleta
+
+    return redirect('pago_exitoso')  # Redirige directamente al pago exitoso (simulado)
+
+
+def pago_exitoso(request):
+    # Obtener el número de orden de compra simulado guardado en la sesión
+    buy_order = request.session.get('buy_order')
+
+    # Simulación de la respuesta de autorización
+    status = 'AUTHORIZED'
+
+    if status == 'AUTHORIZED':
+        perfil = request.user.perfil
+        carrito_items = Carrito.objects.filter(cliente=perfil)
+        monto_sin_iva = sum(item.precio for item in carrito_items)
+        iva = monto_sin_iva * 0.19
+        total_a_pagar = monto_sin_iva + iva
+
+        # Crear boleta simulada
+        boleta = Boleta.objects.create(
+            nro_boleta=buy_order,
+            cliente=perfil,
+            monto_sin_iva=monto_sin_iva,
+            iva=iva,
+            total_a_pagar=total_a_pagar,
+            fecha_venta=timezone.now().date(),
+            estado='Vendido'
+        )
+
+        # Crear detalles de boleta simulados
+        for item in carrito_items:
+            # Aseguramos obtener una bodega válida para el producto del carrito
+            bodega = item.producto.bodega_set.first()  # Asume que hay una relación Producto -> Bodega
+            if bodega:
+                DetalleBoleta.objects.create(
+                    boleta=boleta,
+                    bodega=bodega,
+                    precio=item.precio,
+                    descuento_subscriptor=item.descuento_subscriptor,
+                    descuento_oferta=item.descuento_oferta,
+                    descuento_total=item.descuento_total,
+                    descuentos=item.descuentos,
+                    precio_a_pagar=item.precio_a_pagar
+                )
+            else:
+                print(f"No se encontró una bodega válida para el producto {item.producto.nombre}. Detalle de boleta no creado.")
+
+        # Limpiar el carrito simulado
+        carrito_items.delete()
+
+        # Agregar un mensaje flash para mostrar al usuario
+        messages.success(request, '¡Pago exitoso! Su compra ha sido procesada correctamente.')
+
+        # Pasar los datos necesarios al contexto del template
+        context = {
+            'buy_order': buy_order,
+            'total_a_pagar': total_a_pagar,
+            'boleta': boleta,
+        }
+
+        return render(request, 'core/pago_exitoso.html', context)
+    else:
+        return render(request, 'core/pago_fallido.html', {'buy_order': buy_order})

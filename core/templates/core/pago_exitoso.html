@@ -1,0 +1,31 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load bootstrap5 %}  <!-- Si usas Bootstrap para los mensajes flash -->
+
+{% block content %}
+<div class="container mt-5">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-success" role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="alert alert-success" role="alert">
+        <h4 class="alert-heading">¡Pago Exitoso!</h4>
+        <p>Gracias por tu compra. Tu pago ha sido procesado exitosamente.</p>
+        <hr>
+        <p class="mb-0">Detalles del pago:</p>
+        <ul>
+            <li><strong>Orden de compra:</strong> {{ buy_order }}</li>
+            <li><strong>Monto total:</strong> {{ total_a_pagar }}</li>
+            <li><strong>Fecha de transacción:</strong> {{ boleta.fecha_venta }}</li>
+            <li><strong>Estado:</strong> {{ boleta.estado }}</li>
+        </ul>
+    </div>
+    <a href="{% url 'inicio' %}" class="btn btn-primary">Volver al inicio</a>
+</div>
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+{% endblock content %}

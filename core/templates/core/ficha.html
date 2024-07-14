@@ -1,64 +1,64 @@
 {% extends 'core/base.html' %}
 {% load static %}
-{% load custom_filters %}
 
 {% block content %}
 
-<h1 class="text-center">Ficha Producto </h1>
+<h1 class="text-center">Ficha Producto</h1>
 <br>
 
-    <form method="post" id="formulario-ficha">
+<form method="post" id="formulario-ficha">
+    {% csrf_token %}
 
-        {% csrf_token %}
-
-        <div>
-            <div class="container-fluid">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <div class="card" style="height: 34.5rem;">
-                        <div class="d-flex justify-content-center align-items-center image-container" style="height: 100%;">
-                            <img id="perfilImg" src="/media/{{imagen}}" class="img-fluid w-100 h-100" alt="Imagen" style="object-fit: contain;">
-                        </div>
-                    </div>
-                </div>
-                
+    <div class="container-fluid">
+        <div class="row align-items-center">
             <div class="col-lg-6">
                 <div class="card" style="height: 34.5rem;">
-                  <div class="card-body">
-                    <p class="card-text">
-                      {{producto.nombre}}
-                    </p>
-                    <p class="card-text">{{ html_estado|safe }}</p>  
-                    <br>
-                    <p class="card-text">{{ html_precio|safe }}</p>  
-                        <br>
-                        <p class="card-text">{{ descripcion }}  </p>
-        <br>
-        <p class="card-text">{{ html_stock|safe }}  </p>
-        <br>
-        </div>
-        
-        <div>
-            <input type="hidden" id="accion">
-            <a href="{% url 'comprar_ahora' %}" class="btn btn-primary ancho-160px"> 
-                Comprar ahora 
-            </a>
-                <a href="{% url 'agregar_producto_al_carrito' id %}" class="btn btn-secondary ancho-160px"> 
-                    Agregar al carrito 
-                </a>
+                    <div class="d-flex justify-content-center align-items-center image-container" style="height: 100%;">
+                        <img id="perfilImg" src="/media/{{ imagen }}" class="img-fluid w-100 h-100" alt="Imagen" style="object-fit: contain;">
+                    </div>
+                </div>
             </div>
-            </form>
-        </div>  
+
+            <div class="col-lg-6">
+                <div class="card" style="height: 34.5rem;">
+                    <div class="card-body">
+                        <p class="card-text">{{ producto.nombre }}</p>
+                        <p class="card-text">{{ html_estado|safe }}</p>
+                        <br>
+                        <p class="card-text">{{ html_precio|safe }}</p>
+                        <br>
+                        <p class="card-text">{{ descripcion }}</p>
+                        <br>
+                        <p class="card-text">{{ html_stock|safe }}</p>
+                        <br>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="{% url 'agregar_producto_al_carrito' id %}" class="btn btn-success ancho-160px">
+                            Continuar al pago
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+</form>
+
+{% if messages %}
+<div class="container mt-3">
+    {% for message in messages %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
 </div>
-</div>
-</div>
+{% endif %}
+
 <br>
-<br>
-<br>
-<br>
+<br><br><br><br><br><br><br><br>
 {% endblock content %}
 
 {% block script %}
-    <script src="{% static 'core/js/ficha.js' %}"></script>
+<script src="{% static 'core/js/ficha.js' %}"></script>
 {% endblock script %}
